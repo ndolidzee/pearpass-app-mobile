@@ -6,6 +6,8 @@ import { MAX_IMPORT_RECORDS } from 'pearpass-lib-constants'
 import {
   parse1PasswordData,
   parseBitwardenData,
+  parseKeePassData,
+  parseKeePassKdbx,
   parseLastPassData,
   parseNordPassData,
   parsePearPassData,
@@ -47,6 +49,18 @@ const importOptions = [
     type: 'bitwarden',
     accepts: ['.json', '.csv'],
     imgKey: 'bitwarden'
+  },
+  {
+    title: 'KeePass',
+    type: 'keepass',
+    accepts: ['.kdbx', '.csv', '.xml'],
+    imgKey: 'keepass'
+  },
+  {
+    title: 'KeePassXC',
+    type: 'keepass',
+    accepts: ['.csv', '.xml'],
+    imgKey: 'keepassxc'
   },
   {
     title: 'LastPass',
@@ -91,6 +105,8 @@ const isAllowedType = (fileType, accepts) =>
 const images = {
   '1password': require('../../../../assets/images/1password.png'),
   bitwarden: require('../../../../assets/images/BitWarden.png'),
+  keepass: require('../../../../assets/images/KeePass.png'),
+  keepassxc: require('../../../../assets/images/KeePassXC.png'),
   lastpass: require('../../../../assets/images/LastPass.png'),
   protonpass: require('../../../../assets/images/ProtonPass.png'),
   nordpass: require('../../../../assets/images/NordPass.png'),
@@ -166,19 +182,28 @@ export const ImportSection = () => {
     let result = []
     let dataToProcess = fileContent
 
-    if (type === 'encrypted' || isEncrypted) {
-      if (!password) {
-        throw new Error('Password is required for encrypted files')
+    try {
+      if (type === 'keepass' && fileType === 'kdbx') {
+        if (!password) {
+          throw new Error('Password is required for encrypted files')
+        }
+
+        dataToProcess = await parseKeePassKdbx(fileContent, password)
+        type = 'keepass-kdbx'
       }
 
-      try {
+      if (type === 'encrypted' || isEncrypted) {
+        if (!password) {
+          throw new Error('Password is required for encrypted files')
+        }
+
         const encryptedData = JSON.parse(fileContent)
         dataToProcess = await decryptExportData(encryptedData, password)
-      } catch {
-        throw new Error(
-          'Failed to decrypt file. Please check your password and try again.'
-        )
       }
+    } catch {
+      throw new Error(
+        'Failed to decrypt file. Please check your password and try again.'
+      )
     }
 
     try {
@@ -191,6 +216,12 @@ export const ImportSection = () => {
           break
         case 'lastpass':
           result = await parseLastPassData(dataToProcess, fileType)
+          break
+        case 'keepass':
+          result = await parseKeePassData(dataToProcess, fileType)
+          break
+        case 'keepass-kdbx':
+          result = await parseKeePassData(dataToProcess, 'kdbx')
           break
         case 'nordpass':
           result = await parseNordPassData(dataToProcess, fileType)
@@ -210,6 +241,16 @@ export const ImportSection = () => {
           )
       }
 
+      await importRecords(result)
+    } catch (error) {
+      throw new Error(
+        error.message || 'Failed to parse file. Please ensure it is valid.'
+      )
+    }
+  }
+
+  const importRecords = useCallback(
+    async (result) => {
       if (result.length === 0) {
         Toast.show({
           type: 'baseToast',
@@ -255,20 +296,9 @@ export const ImportSection = () => {
         position: 'bottom',
         bottomOffset: 100
       })
-    } catch (error) {
-      const isFileError = error.message?.includes('File too large')
-
-      Toast.show({
-        type: 'baseToast',
-        text1: isFileError ? error.message : t`Vaults import failed!`,
-        position: 'bottom',
-        bottomOffset: 100
-      })
-      logger.error('Error importing:', error.message || error)
-    } finally {
-      setShouldBypassAutoLock(false)
-    }
-  }
+    },
+    [createRecord, t]
+  )
 
   return (
     <CardSingleSetting title={t`Import Vault`}>
@@ -279,7 +309,7 @@ export const ImportSection = () => {
         <ImportOptionsList>
           {importOptions.map((option) => (
             <ImportOptionItem
-              key={option.type}
+              key={option.title}
               onPress={() => {
                 const bottomSheetOptions = {
                   children: (
@@ -296,15 +326,11 @@ export const ImportSection = () => {
                           accepts: option.accepts
                         })
                       }
-                      onImport={(
-                        { fileContent, fileType, isEncrypted },
-                        password
-                      ) =>
-                        onImport({
+                      onImport={async ({ fileContent, fileType }, password) =>
+                        await onImport({
                           type: option.type,
                           fileContent,
                           fileType,
-                          isEncrypted,
                           password
                         })
                       }

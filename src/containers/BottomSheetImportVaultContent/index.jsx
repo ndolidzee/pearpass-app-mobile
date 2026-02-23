@@ -11,7 +11,14 @@ import {
   FolderIcon
 } from 'pearpass-lib-ui-react-native-components'
 import { colors } from 'pearpass-lib-ui-theme-provider'
-import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native'
+import {
+  ActivityIndicator,
+  Dimensions,
+  Pressable,
+  StyleSheet,
+  Text,
+  View
+} from 'react-native'
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -49,6 +56,7 @@ export const BottomSheetImportVaultContent = ({
   const [currentStep, setCurrentStep] = useState(STEPS.BROWSE)
   const [selectedFile, setSelectedFile] = useState(null)
   const slideAnim = useSharedValue(0)
+  const [isImporting, setIsImporting] = useState(false)
 
   const schema = Validator.object({
     password: Validator.string().required(t`Password is required`)
@@ -95,18 +103,21 @@ export const BottomSheetImportVaultContent = ({
   }
 
   const handleImport = async (formValues) => {
+    setIsImporting(true)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
     try {
       const password = formValues?.password || null
       await onImport(
         {
           fileContent: selectedFile.fileContent,
-          fileType: selectedFile.fileType,
-          isEncrypted: selectedFile.isEncrypted
+          fileType: selectedFile.fileType
         },
         password
       )
       onClose()
     } catch (error) {
+      console.error('Import error:', error)
       if (currentStep === STEPS.PASSWORD_ENTRY) {
         setErrors({
           password:
@@ -115,6 +126,8 @@ export const BottomSheetImportVaultContent = ({
               : t`The password entered doesn't match the one used to encrypt your file. Please check your credentials and try again.`
         })
       }
+    } finally {
+      setIsImporting(false)
     }
   }
 
@@ -190,13 +203,17 @@ export const BottomSheetImportVaultContent = ({
       </View>
 
       <View style={styles.buttonContainer}>
-        <ButtonPrimary
-          disabled={!values.password}
-          onPress={handleSubmit(handleImport)}
-          stretch
-        >
-          {t`Import`}
-        </ButtonPrimary>
+        {isImporting ? (
+          <ActivityIndicator size="small" color={colors.primary400.mode1} />
+        ) : (
+          <ButtonPrimary
+            disabled={!values.password}
+            onPress={handleSubmit(handleImport)}
+            stretch
+          >
+            {t`Import`}
+          </ButtonPrimary>
+        )}
       </View>
     </>
   )
