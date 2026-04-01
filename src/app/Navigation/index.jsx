@@ -1,9 +1,11 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
+import { ImagePreview } from 'src/screens/ImagePreview'
+import { ImagePreviewV2 } from 'src/screens/ImagePreview/ImagePreviewV2'
+import { isV2 } from 'src/utils/designVersion'
 
 import { CreateFolder } from '../../screens/CreateFolder'
 import { CreateRecord } from '../../screens/CreateRecord'
 import { ErrorScreen } from '../../screens/ErrorScreen'
-import { ImagePreview } from '../../screens/ImagePreview'
 import { Intro } from '../../screens/Intro'
 import { Onboarding } from '../../screens/Onboarding'
 import { RecordDetails } from '../../screens/RecordDetails'
@@ -50,7 +52,10 @@ export const Navigation = ({ initialRouteName }) => (
       options={{ gestureEnabled: false }}
     />
     <Stack.Screen name="RecordDetails" component={RecordDetails} />
-    <Stack.Screen name="ImagePreview" component={ImagePreview} />
+    <Stack.Screen
+      name="ImagePreview"
+      component={isV2() ? ImagePreviewV2 : ImagePreview}
+    />
     <Stack.Screen name="CreateRecord" component={CreateRecord} />
     <Stack.Screen name="CreateFolder" component={CreateFolder} />
   </Stack.Navigator>
