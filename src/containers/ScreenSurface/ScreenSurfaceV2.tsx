@@ -1,6 +1,13 @@
 import { useTheme } from '@tetherto/pearpass-lib-ui-kit'
 import { ReactNode } from 'react'
-import { ScrollView, StyleProp, View, ViewStyle } from 'react-native'
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleProp,
+  View,
+  ViewStyle
+} from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { styles } from './ScreenSurfaceV2Styles'
 
@@ -26,7 +33,7 @@ export const ScreenSurface = ({
   const { bottom } = useSafeAreaInsets()
 
   return (
-    <View
+    <KeyboardAvoidingView
       style={[
         styles.surface,
         {
@@ -35,6 +42,7 @@ export const ScreenSurface = ({
         },
         style
       ]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       {scrollable ? (
         <ScrollView
@@ -62,6 +70,6 @@ export const ScreenSurface = ({
       >
         {footer}
       </View>
-    </View>
+    </KeyboardAvoidingView>
   )
 }
