@@ -9,7 +9,8 @@ import {
 import {
   Close,
   MoreVert,
-  TrashOutlined
+  TrashOutlined,
+  Edit
 } from '@tetherto/pearpass-lib-ui-kit/icons'
 import { View } from 'react-native'
 import { styles } from './BottomSheetFileMoreActionsContentV2Styles'
@@ -99,7 +100,7 @@ export const BottomSheetFileMoreActionsContentV2 = ({
           <NavbarListItem
             label="Rename"
             onClick={() => setIsRenaming(true)}
-            icon={<TrashOutlined color={theme.colors.colorTextPrimary} />}
+            icon={<Edit color={theme.colors.colorTextPrimary} />}
             showDivider
           />
           <NavbarListItem
