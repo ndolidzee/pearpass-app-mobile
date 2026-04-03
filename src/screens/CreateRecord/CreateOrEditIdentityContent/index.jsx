@@ -694,7 +694,7 @@ export const CreateOrEditIdentityContent = ({
                   key={attachment?.id || attachment.name}
                   attachment={attachment}
                   attachmentIndex={index}
-                  onDelete={(idx) => handleAttachmentDelete(idx, 'attachments')}
+                  onDelete={() => handleAttachmentDelete(index, 'attachments')}
                   isLast
                   label={'File'}
                   onRename={(newName) =>
