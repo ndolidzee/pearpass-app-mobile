@@ -1,3 +1,5 @@
+import { useBottomSheetModal } from '@gorhom/bottom-sheet'
+import { useLingui } from '@lingui/react/macro'
 import {
   Button,
   ContextMenu,
@@ -8,16 +10,14 @@ import {
 } from '@tetherto/pearpass-lib-ui-kit'
 import {
   Close,
+  Edit,
   MoreVert,
-  TrashOutlined,
-  Edit
+  TrashOutlined
 } from '@tetherto/pearpass-lib-ui-kit/icons'
+import { useState } from 'react'
 import { View } from 'react-native'
-import { styles } from './BottomSheetFileMoreActionsContentV2Styles'
-import { useEffect, useState } from 'react'
-import { useBottomSheetModal } from '@gorhom/bottom-sheet'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useLingui } from '@lingui/react/macro'
+import { styles } from './BottomSheetFileMoreActionsContentV2Styles'
 
 const imageRegex = /\.(jpe?g|png|gif|webp|bmp|svg|heic|heif|tiff?)$/i
 
@@ -43,12 +43,6 @@ export const BottomSheetFileMoreActionsContentV2 = ({
   const { theme } = useTheme()
   const { dismiss } = useBottomSheetModal()
   const { bottom } = useSafeAreaInsets()
-
-  useEffect(() => {
-    return () => {
-      setState('default')
-    }
-  }, [])
 
   return (
     <ContextMenu

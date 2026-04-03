@@ -15,10 +15,9 @@ export const styles = StyleSheet.create({
     padding: rawTokens.spacing16
   },
   imageCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: rawTokens.spacing16,
     overflow: 'hidden',
-    elevation: 4
+    elevation: rawTokens.spacing4
   },
   styledImage: {
     width: '100%'
