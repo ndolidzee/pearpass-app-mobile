@@ -151,7 +151,8 @@ export const Authenticator = () => {
             setSelectedRecords={() => {}}
             selectedRecords={[]}
           />
-        )
+        ),
+        hideFooter: true
       }
     : { style: styles.container }
 

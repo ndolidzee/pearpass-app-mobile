@@ -16,7 +16,7 @@ import Toast from 'react-native-toast-message'
 
 import { BottomSheetFileMoreActionsContentV2 } from 'src/containers/BottomSheetFileMoreActionsContentV2/BottomSheetFileMoreActionsContentV2'
 import { BackScreenHeader } from 'src/containers/ScreenHeader/BackScreenHeader'
-import { ScreenSurface } from 'src/containers/ScreenSurface/ScreenSurfaceV2'
+import { ScreenLayout } from 'src/containers/ScreenLayout'
 import { withAutoLockBypass } from '../../HOCs'
 import { convertDataUriToFileUri } from '../../utils/convertDataUriToFileUri'
 import { getMimeType } from '../../utils/getMimeType'
@@ -102,49 +102,46 @@ export const ImagePreviewV2 = withAutoLockBypass(
     }
 
     return (
-      <View
-        style={[
-          styles.container,
-          { backgroundColor: theme.colors.colorBackground }
-        ]}
-      >
-        <BackScreenHeader
-          title={currentImageName}
-          onBack={() => navigation.goBack()}
-          rightActions={
-            <View style={styles.actionButtonsContainer}>
-              <Button
-                variant="tertiary"
-                size="medium"
-                aria-label="Share"
-                iconBefore={<ShareIcon color={theme.colors.colorTextPrimary} />}
-                onClick={handleShare}
-              />
-              {isEditable && (
-                <BottomSheetFileMoreActionsContentV2
-                  handleDelete={handleDelete}
-                  handleRename={handleRename}
-                  filename={currentImageName || ''}
+      <ScreenLayout
+        header={
+          <BackScreenHeader
+            title={currentImageName}
+            onBack={() => navigation.goBack()}
+            rightActions={
+              <View style={styles.actionButtonsContainer}>
+                <Button
+                  variant="tertiary"
+                  size="medium"
+                  aria-label="Share"
+                  iconBefore={
+                    <ShareIcon color={theme.colors.colorTextPrimary} />
+                  }
+                  onClick={handleShare}
                 />
-              )}
-            </View>
-          }
-        />
-
-        <ScreenSurface scrollable contentStyle={styles.imageContainer}>
-          <View style={styles.imageCard}>
-            <Image
-              source={{ uri: imageUri }}
-              resizeMode="contain"
-              style={[
-                styles.styledImage,
-                imageRatio ? { aspectRatio: imageRatio } : { height: 400 }
-              ]}
-              onLoad={handleImageLoad}
-            />
-          </View>
-        </ScreenSurface>
-      </View>
+                {isEditable && (
+                  <BottomSheetFileMoreActionsContentV2
+                    handleDelete={handleDelete}
+                    handleRename={handleRename}
+                    filename={currentImageName || ''}
+                  />
+                )}
+              </View>
+            }
+          />
+        }
+      >
+        <View style={styles.imageCard}>
+          <Image
+            source={{ uri: imageUri }}
+            resizeMode="contain"
+            style={[
+              styles.styledImage,
+              imageRatio ? { aspectRatio: imageRatio } : { height: 400 }
+            ]}
+            onLoad={handleImageLoad}
+          />
+        </View>
+      </ScreenLayout>
     )
   }
 )

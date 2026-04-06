@@ -104,6 +104,7 @@ export const Home = () => {
           />
         ) : undefined
       }
+      hideFooter={isV2() ? true : undefined}
     >
       {!isV2() && (
         <Header
