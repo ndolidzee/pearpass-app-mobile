@@ -1,15 +1,15 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
-import { ImagePreview } from 'src/screens/ImagePreview'
-import { ImagePreviewV2 } from 'src/screens/ImagePreview/ImagePreviewV2'
-import { isV2 } from 'src/utils/designVersion'
 
 import { CreateFolder } from '../../screens/CreateFolder'
 import { CreateRecord } from '../../screens/CreateRecord'
 import { ErrorScreen } from '../../screens/ErrorScreen'
+import { ImagePreview } from '../../screens/ImagePreview'
+import { ImagePreviewV2 } from '../../screens/ImagePreview/ImagePreviewV2'
 import { Intro } from '../../screens/Intro'
 import { Onboarding } from '../../screens/Onboarding'
 import { RecordDetails } from '../../screens/RecordDetails'
 import { Welcome } from '../../screens/Welcome'
+import { isV2 } from '../../utils/designVersion'
 import { TabNavigator } from '../TabNavigator'
 
 const Stack = createNativeStackNavigator()
