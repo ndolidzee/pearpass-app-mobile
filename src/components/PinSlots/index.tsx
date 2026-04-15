@@ -1,10 +1,13 @@
 import { useEffect, useRef, createRef, type RefObject } from 'react'
-import type { TextInput } from 'react-native'
 
 import { InputField } from '@tetherto/pearpass-lib-ui-kit'
 import { View } from 'react-native'
 
 import { styles } from './styles'
+
+interface NativeInputElement extends HTMLInputElement {
+  setNativeProps?: (props: Record<string, unknown>) => void
+}
 
 interface PinSlotsProps {
   pin: string
@@ -17,8 +20,10 @@ export const PinSlots = ({
   pinLength,
   testIDPrefix = 'pin-slot'
 }: PinSlotsProps) => {
-  const inputRefs = useRef<RefObject<TextInput | null>[]>(
-    Array.from({ length: pinLength }, () => createRef<TextInput | null>())
+  const inputRefs = useRef<RefObject<NativeInputElement | null>[]>(
+    Array.from({ length: pinLength }, () =>
+      createRef<NativeInputElement | null>()
+    )
   ).current
 
   useEffect(() => {
@@ -46,7 +51,7 @@ export const PinSlots = ({
               label=""
               value={isFilled ? '\u2022' : ''}
               placeholder="0"
-              inputRef={inputRefs[index] as RefObject<HTMLInputElement | null>}
+              inputRef={inputRefs[index]}
               testID={`${testIDPrefix}-${index}`}
             />
           </View>
