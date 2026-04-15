@@ -114,7 +114,7 @@ export const SettingsV2 = () => {
           {
             key: 'language',
             label: t`Language`,
-            screen: 'Appearance',
+            screen: 'AppearanceV2',
             icon: Translate
           }
         ]
@@ -133,7 +133,7 @@ export const SettingsV2 = () => {
           {
             key: 'app-version',
             label: t`App Version`,
-            screen: 'About',
+            screen: 'AboutV2',
             icon: SystemSecurityUpdateFilled
           }
         ]
