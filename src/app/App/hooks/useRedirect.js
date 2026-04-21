@@ -28,7 +28,6 @@ export const useRedirect = () => {
       try {
         let userData = await refetchUserData()
 
-        console.error(userData)
         if (!userData) {
           userData = await refetchUserData()
         }
