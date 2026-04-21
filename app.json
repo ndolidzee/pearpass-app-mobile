@@ -59,9 +59,10 @@
     },
     "plugins": [
       [
-        "expo-camera",
+        "react-native-vision-camera",
         {
-          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to scan QR codes for securely pairing your vault with another device."
+          "cameraPermissionText": "Allow $(PRODUCT_NAME) to access your camera to scan QR codes for securely pairing your vault with another device.",
+          "enableCodeScanner": false
         }
       ],
       [
@@ -99,7 +100,13 @@
             "usesCleartextTraffic": true
           },
           "ios": {
-            "deploymentTarget": "15.1"
+            "deploymentTarget": "15.1",
+            "extraPods": [
+              {
+                "name": "ZXingObjC",
+                "modular_headers": true
+              }
+            ]
           }
         }
       ],

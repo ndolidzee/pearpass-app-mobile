@@ -7,9 +7,9 @@ import {
   InputField
 } from '@tetherto/pearpass-lib-ui-kit'
 import { ContentCopy } from '@tetherto/pearpass-lib-ui-kit/icons'
-import { CameraView } from 'expo-camera'
 import * as Clipboard from 'expo-clipboard'
 import { Dimensions, StyleSheet, View } from 'react-native'
+import { Camera } from 'react-native-vision-camera'
 
 import { useQRScanner } from '../../hooks/useQRScanner'
 
@@ -35,10 +35,10 @@ export const ImportScanStep = ({
 
   const {
     hasPermission,
-    isScanning,
-    cameraRef,
+    codeScanner,
+    device,
+    frameProcessor,
     pauseScanning,
-    handleBarCodeScanned,
     requestPermission
   } = useQRScanner({
     onScanned: (data: string) => {
@@ -89,28 +89,26 @@ export const ImportScanStep = ({
           ]}
         >
           <View style={styles.cameraInner}>
-            <CameraView
-              ref={cameraRef}
-              onBarcodeScanned={
-                isScanning && !isLoading ? handleBarCodeScanned : undefined
-              }
-              zoom={0}
-              style={styles.camera}
-              barcodeScannerSettings={{
-                barcodeTypes: ['qr']
-              }}
-            >
-              <View
-                style={[
-                  styles.cameraSpot,
-                  {
-                    width: spotSize,
-                    height: spotSize,
-                    borderColor: theme.colors.colorBorderPrimary
-                  }
-                ]}
-              />
-            </CameraView>
+            {device ? (
+              <Camera
+                device={device}
+                isActive={!isLoading}
+                style={styles.camera}
+                codeScanner={codeScanner}
+                frameProcessor={frameProcessor}
+              >
+                <View
+                  style={[
+                    styles.cameraSpot,
+                    {
+                      width: spotSize,
+                      height: spotSize,
+                      borderColor: theme.colors.colorBorderPrimary
+                    }
+                  ]}
+                />
+              </Camera>
+            ) : null}
           </View>
         </View>
       )}
