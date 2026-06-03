@@ -20,13 +20,31 @@ import {
 import { StyleSheet, View } from 'react-native'
 import Toast from 'react-native-toast-message'
 
+import { AttachmentFields } from '../../components/AttachmentFields'
 import { FolderSelectField } from '../../components/FolderSelectField'
 import { PassPhrase } from '../../containers/PassPhrase'
 import { BackScreenHeader } from '../../containers/ScreenHeader/BackScreenHeader'
 import { Layout } from '../../containers/Layout'
 import { useLoadingContext } from '../../context/LoadingContext'
+import { useGetMultipleFiles } from '../../hooks/useGetMultipleFiles'
+import { convertBase64FilesToUint8 } from '../../utils/convertBase64FilesToUint8'
 import { logger } from '../../utils/logger'
 import { Add, TrashOutlined } from '@tetherto/pearpass-lib-ui-kit/icons'
+
+type PassphraseAttachment = {
+  base64?: string
+  id?: string | number
+  name: string
+}
+
+type UploadedPassphraseAttachment = PassphraseAttachment & {
+  base64: string
+}
+
+const isUploadedAttachment = (
+  attachment: PassphraseAttachment
+): attachment is UploadedPassphraseAttachment =>
+  typeof attachment.base64 === 'string'
 
 type PassphraseRecord = {
   data?: {
@@ -37,6 +55,7 @@ type PassphraseRecord = {
   }
   folder?: string
   isFavorite?: boolean
+  attachments?: PassphraseAttachment[]
 }
 
 type Props = {
@@ -49,7 +68,8 @@ type FormValues = {
   passPhrase: string
   note: string
   customFields: Array<{ type: string; note?: string }>
-  folder: string
+  folder?: string
+  attachments: PassphraseAttachment[]
 }
 
 const parsePassphraseText = (text: string) =>
@@ -90,30 +110,38 @@ export const CreateOrEditPassphraseContent = ({
     folder: Validator.string()
   })
 
-  const { handleSubmit, registerArray, values, setValue, errors } = useForm({
-    initialValues: {
-      title: initialRecord?.data?.title ?? '',
-      passPhrase: initialRecord?.data?.passPhrase ?? '',
-      note: initialRecord?.data?.note ?? '',
-      customFields: initialRecord?.data?.customFields ?? [],
-      folder: selectedFolder ?? initialRecord?.folder
-    },
-    validate: (formValues) => {
-      const validationErrors =
-        (schema.validate(formValues) as Record<string, string | undefined>) ??
-        {}
-      const passphraseWordCount = parsePassphraseText(
-        formValues.passPhrase ?? ''
-      ).length
+  const { handleSubmit, registerArray, values, setValue, errors } =
+    useForm<FormValues>({
+      initialValues: {
+        title: initialRecord?.data?.title ?? '',
+        passPhrase: initialRecord?.data?.passPhrase ?? '',
+        note: initialRecord?.data?.note ?? '',
+        customFields: initialRecord?.data?.customFields ?? [],
+        folder: selectedFolder ?? initialRecord?.folder,
+        attachments: initialRecord?.attachments ?? []
+      },
+      validate: (formValues) => {
+        const validationErrors =
+          (schema.validate(formValues) as Record<string, string | undefined>) ??
+          {}
+        const passphraseWordCount = parsePassphraseText(
+          formValues.passPhrase ?? ''
+        ).length
 
-      if (!passphraseWordCount) {
-        validationErrors.passPhrase = t`Recovery phrase is required`
-      } else if (!VALID_WORD_COUNTS.includes(passphraseWordCount)) {
-        validationErrors.passPhrase = t`Recovery phrase must contain 12 or 24 words`
+        if (!passphraseWordCount) {
+          validationErrors.passPhrase = t`Recovery phrase is required`
+        } else if (!VALID_WORD_COUNTS.includes(passphraseWordCount)) {
+          validationErrors.passPhrase = t`Recovery phrase must contain 12 or 24 words`
+        }
+
+        return validationErrors
       }
+    })
 
-      return validationErrors
-    }
+  useGetMultipleFiles({
+    fieldNames: ['attachments'],
+    updateValues: setValue,
+    initialRecord
   })
 
   const onError = (error: Error) => {
@@ -134,11 +162,16 @@ export const CreateOrEditPassphraseContent = ({
       type: RECORD_TYPES.PASS_PHRASE,
       folder: formValues.folder,
       isFavorite: initialRecord?.isFavorite,
+      attachments: convertBase64FilesToUint8(
+        formValues.attachments.filter(isUploadedAttachment)
+      ),
       data: {
         title: formValues.title,
         passPhrase: formValues.passPhrase,
         note: formValues.note,
-        customFields: (formValues.customFields as Array<{ type: string; note?: string }>).filter((f) => f.note?.trim().length)
+        customFields: (
+          formValues.customFields as Array<{ type: string; note?: string }>
+        ).filter((f) => f.note?.trim().length)
       }
     }
 
@@ -158,10 +191,31 @@ export const CreateOrEditPassphraseContent = ({
     }
   }
 
-  const {
-    addItem: addCustomField,
-    removeItem: removeCustomField
-  } = registerArray('customFields')
+  const { addItem: addCustomField, removeItem: removeCustomField } =
+    registerArray('customFields')
+
+  const handleFileUpload = (file?: PassphraseAttachment | null) => {
+    if (!file) return
+    setValue('attachments', [...values.attachments, file])
+  }
+
+  const handleAttachmentReplace = (
+    index: number,
+    file?: PassphraseAttachment | null
+  ) => {
+    if (!file) return
+    const updated = values.attachments.map((a, idx) =>
+      idx === index ? file : a
+    )
+    setValue('attachments', updated)
+  }
+
+  const handleAttachmentDelete = (index: number) => {
+    setValue(
+      'attachments',
+      values.attachments.filter((_, idx) => idx !== index)
+    )
+  }
 
   return (
     <Layout
@@ -183,7 +237,9 @@ export const CreateOrEditPassphraseContent = ({
           variant="primary"
           fullWidth
           isLoading={isLoading}
-          disabled={isLoading || !values.title.trim() || !values.passPhrase.trim()}
+          disabled={
+            isLoading || !values.title.trim() || !values.passPhrase.trim()
+          }
           onClick={handleSubmit(onSubmit)}
         >
           {actionLabel}
@@ -231,6 +287,14 @@ export const CreateOrEditPassphraseContent = ({
           testID="comment-input-field"
         />
 
+        <AttachmentFields
+          attachments={values.attachments}
+          isEditing={isEditing}
+          onAdd={handleFileUpload}
+          onReplace={handleAttachmentReplace}
+          onDelete={handleAttachmentDelete}
+        />
+
         <MultiSlotInput
           actions={
             <Button
@@ -249,8 +313,9 @@ export const CreateOrEditPassphraseContent = ({
           }
           testID="hidden-messages-multi-slot-input"
         >
-          {(values.customFields as Array<{ type: string; note?: string }>).length
-            ? (values.customFields as Array<{ type: string; note?: string }>).map(
+          {(values.customFields as Array<{ type: string; note?: string }>)
+            .length ? (
+            (values.customFields as Array<{ type: string; note?: string }>).map(
               (field, index) => (
                 <PasswordField
                   key={`${field.type}-${index}`}
@@ -263,13 +328,20 @@ export const CreateOrEditPassphraseContent = ({
                   isGrouped
                   testID={`hidden-messages-multi-slot-input-slot-${index}`}
                   rightSlot={
-                    (values.customFields as Array<{ type: string; note?: string }>).length > 1 ? (
+                    (
+                      values.customFields as Array<{
+                        type: string
+                        note?: string
+                      }>
+                    ).length > 1 ? (
                       <Button
                         size="small"
                         variant="tertiary"
                         aria-label="Delete hidden message"
                         iconBefore={
-                          <TrashOutlined color={theme.colors.colorTextPrimary} />
+                          <TrashOutlined
+                            color={theme.colors.colorTextPrimary}
+                          />
                         }
                         onClick={() => removeCustomField(index)}
                       />
@@ -278,18 +350,21 @@ export const CreateOrEditPassphraseContent = ({
                 />
               )
             )
-            : (
-              <PasswordField
-                label={t`Hidden Message`}
-                value=""
-                placeholder={t`Enter Hidden Message`}
-                onChangeText={(val) =>
-                  setValue('customFields', val ? [{ type: 'note', note: val }] : [])
-                }
-                isGrouped
-                testID="hidden-messages-multi-slot-input-slot-0"
-              />
-            )}
+          ) : (
+            <PasswordField
+              label={t`Hidden Message`}
+              value=""
+              placeholder={t`Enter Hidden Message`}
+              onChangeText={(val) =>
+                setValue(
+                  'customFields',
+                  val ? [{ type: 'note', note: val }] : []
+                )
+              }
+              isGrouped
+              testID="hidden-messages-multi-slot-input-slot-0"
+            />
+          )}
         </MultiSlotInput>
       </View>
     </Layout>

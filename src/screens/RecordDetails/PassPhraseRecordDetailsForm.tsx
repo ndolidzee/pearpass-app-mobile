@@ -1,8 +1,10 @@
 import { useEffect, useMemo } from 'react'
 
 import { useLingui } from '@lingui/react/macro'
+import { useNavigation } from '@react-navigation/native'
 import { useForm } from '@tetherto/pear-apps-lib-ui-react-hooks'
 import {
+  AttachmentField,
   InputField,
   MultiSlotInput,
   PasswordField,
@@ -13,9 +15,20 @@ import {
 import { StyleSheet, View } from 'react-native'
 
 import { PassPhrase } from '../../containers/PassPhrase'
+import { useAutoLockContext } from '../../context/AutoLockContext'
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard'
-import { CustomField, PassPhraseRecord } from './types'
+import { useGetMultipleFiles } from '../../hooks/useGetMultipleFiles'
+import { getMimeType } from '../../utils/getMimeType'
+import { handleDownloadFile } from '../../utils/handleDownloadFile'
+import { Attachment, CustomField, PassPhraseRecord } from './types'
 import { toReadOnlyFieldProps } from './utils'
+
+type ImagePreviewNavigation = {
+  navigate: (
+    screen: 'ImagePreview',
+    params: { imageUri: string; imageName?: string }
+  ) => void
+}
 
 interface PassPhraseRecordDetailsFormProps {
   initialRecord?: PassPhraseRecord
@@ -28,6 +41,7 @@ interface PassPhraseRecordDetailsFormValues {
   note: string
   customFields: CustomField[]
   folder?: string
+  attachments: Attachment[]
 }
 
 export const PassPhraseRecordDetailsForm = ({
@@ -35,8 +49,12 @@ export const PassPhraseRecordDetailsForm = ({
   selectedFolder
 }: PassPhraseRecordDetailsFormProps) => {
   const { t } = useLingui()
+  const navigation = useNavigation() as ImagePreviewNavigation
   const { theme } = useTheme()
   const { copyToClipboard } = useCopyToClipboard()
+  const { setShouldBypassAutoLock } = useAutoLockContext() as {
+    setShouldBypassAutoLock: (value: boolean) => void
+  }
 
   const initialValues = useMemo<PassPhraseRecordDetailsFormValues>(
     () => ({
@@ -44,13 +62,20 @@ export const PassPhraseRecordDetailsForm = ({
       passPhrase: initialRecord?.data?.passPhrase ?? '',
       note: initialRecord?.data?.note ?? '',
       customFields: initialRecord?.data?.customFields ?? [],
-      folder: selectedFolder ?? initialRecord?.folder
+      folder: selectedFolder ?? initialRecord?.folder,
+      attachments: initialRecord?.attachments ?? []
     }),
     [initialRecord, selectedFolder]
   )
 
-  const { register, setValues, values } = useForm<PassPhraseRecordDetailsFormValues>({
+  const { register, setValues, values, setValue } = useForm<PassPhraseRecordDetailsFormValues>({
     initialValues
+  })
+
+  useGetMultipleFiles({
+    fieldNames: ['attachments'],
+    updateValues: setValue,
+    initialRecord
   })
 
   useEffect(() => {
@@ -60,12 +85,55 @@ export const PassPhraseRecordDetailsForm = ({
   const hasPassPhrase = !!values.passPhrase.length
   const hasNote = !!values.note.length
   const hasCustomFields = !!values.customFields.length
+  const hasAttachments = !!values.attachments.length
+
+  const handleAttachmentPress = async (attachment: Attachment) => {
+    if (getMimeType(attachment.name ?? '').startsWith('image/')) {
+      const imageUri = attachment.base64
+        ? `data:image/jpeg;base64,${attachment.base64}`
+        : ''
+
+      navigation.navigate('ImagePreview', {
+        imageUri,
+        imageName: attachment.name
+      })
+
+      return
+    }
+
+    try {
+      setShouldBypassAutoLock(true)
+      await handleDownloadFile({
+        base64: attachment.base64 ?? '',
+        name: attachment.name ?? ''
+      })
+    } finally {
+      setShouldBypassAutoLock(false)
+    }
+  }
 
   return (
     <View style={styles.container}>
       <View style={styles.topContent}>
         {hasPassPhrase && (
           <PassPhrase value={values.passPhrase} />
+        )}
+
+        {hasAttachments && (
+          <MultiSlotInput testID="attachments-multi-slot-input">
+            {values.attachments.map((attachment, index) => (
+              <AttachmentField
+                key={attachment?.id || attachment.name}
+                label={t`Attachment`}
+                value={attachment?.name ?? ''}
+                isGrouped
+                testID={`attachment-field-${index}`}
+                onClick={() => {
+                  void handleAttachmentPress(attachment)
+                }}
+              />
+            ))}
+          </MultiSlotInput>
         )}
 
         {(hasNote || hasCustomFields) && (

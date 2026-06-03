@@ -16,16 +16,37 @@ import {
   rawTokens,
   useTheme
 } from '@tetherto/pearpass-lib-ui-kit'
-import { Add, SyncLock, TrashOutlined } from '@tetherto/pearpass-lib-ui-kit/icons'
+import {
+  Add,
+  SyncLock,
+  TrashOutlined
+} from '@tetherto/pearpass-lib-ui-kit/icons'
 import { Keyboard, StyleSheet, View } from 'react-native'
 import Toast from 'react-native-toast-message'
 
+import { AttachmentFields } from '../../components/AttachmentFields'
 import { FolderSelectField } from '../../components/FolderSelectField'
 import { BackScreenHeader } from '../../containers/ScreenHeader/BackScreenHeader'
 import { Layout } from '../../containers/Layout'
 import { useLoadingContext } from '../../context/LoadingContext'
+import { useGetMultipleFiles } from '../../hooks/useGetMultipleFiles'
+import { convertBase64FilesToUint8 } from '../../utils/convertBase64FilesToUint8'
 import { logger } from '../../utils/logger'
 import { getPasswordIndicatorVariant } from '../../utils/passwordPolicy'
+
+type WifiAttachment = {
+  base64?: string
+  id?: string | number
+  name: string
+}
+
+type UploadedWifiAttachment = WifiAttachment & {
+  base64: string
+}
+
+const isUploadedAttachment = (
+  attachment: WifiAttachment
+): attachment is UploadedWifiAttachment => typeof attachment.base64 === 'string'
 
 type WifiRecord = {
   data?: {
@@ -36,6 +57,7 @@ type WifiRecord = {
   }
   folder?: string
   isFavorite?: boolean
+  attachments?: WifiAttachment[]
 }
 
 type Props = {
@@ -56,7 +78,8 @@ type FormValues = {
   password: string
   note: string
   customFields: Array<{ type: string; note: string }>
-  folder: string
+  folder?: string
+  attachments: WifiAttachment[]
 }
 
 export const CreateOrEditWifiPasswordContent = ({
@@ -91,16 +114,23 @@ export const CreateOrEditWifiPasswordContent = ({
   })
 
   const { handleSubmit, registerArray, values, setValue, errors } =
-    useForm({
+    useForm<FormValues>({
       initialValues: {
         title: initialRecord?.data?.title ?? '',
         password: initialRecord?.data?.password ?? '',
         note: initialRecord?.data?.note ?? '',
         customFields: initialRecord?.data?.customFields ?? [],
-        folder: selectedFolder ?? initialRecord?.folder
+        folder: selectedFolder ?? initialRecord?.folder,
+        attachments: initialRecord?.attachments ?? []
       },
       validate: (formValues) => schema.validate(formValues)
     })
+
+  useGetMultipleFiles({
+    fieldNames: ['attachments'],
+    updateValues: setValue,
+    initialRecord
+  })
 
   const onError = (error: Error) => {
     Toast.show({
@@ -120,11 +150,16 @@ export const CreateOrEditWifiPasswordContent = ({
       type: RECORD_TYPES.WIFI_PASSWORD,
       folder: formValues.folder,
       isFavorite: initialRecord?.isFavorite,
+      attachments: convertBase64FilesToUint8(
+        formValues.attachments.filter(isUploadedAttachment)
+      ),
       data: {
         title: formValues.title,
         password: formValues.password,
         note: formValues.note,
-        customFields: formValues.customFields.filter((f) => f.note?.trim().length)
+        customFields: formValues.customFields.filter(
+          (f) => f.note?.trim().length
+        )
       }
     }
 
@@ -144,10 +179,31 @@ export const CreateOrEditWifiPasswordContent = ({
     }
   }
 
-  const {
-    addItem: addCustomField,
-    removeItem: removeCustomField
-  } = registerArray('customFields')
+  const { addItem: addCustomField, removeItem: removeCustomField } =
+    registerArray('customFields')
+
+  const handleFileUpload = (file?: WifiAttachment | null) => {
+    if (!file) return
+    setValue('attachments', [...values.attachments, file])
+  }
+
+  const handleAttachmentReplace = (
+    index: number,
+    file?: WifiAttachment | null
+  ) => {
+    if (!file) return
+    const updated = values.attachments.map((a, idx) =>
+      idx === index ? file : a
+    )
+    setValue('attachments', updated)
+  }
+
+  const handleAttachmentDelete = (index: number) => {
+    setValue(
+      'attachments',
+      values.attachments.filter((_, idx) => idx !== index)
+    )
+  }
 
   const handleFirstHiddenMessageChange = (value: string) => {
     setValue('customFields', value ? [{ type: 'note', note: value }] : [])
@@ -176,7 +232,9 @@ export const CreateOrEditWifiPasswordContent = ({
           variant="primary"
           fullWidth
           isLoading={isLoading}
-          disabled={isLoading || !values.title.trim() || !values.password.trim()}
+          disabled={
+            isLoading || !values.title.trim() || !values.password.trim()
+          }
           onClick={handleSubmit(onSubmit)}
         >
           {actionLabel}
@@ -236,6 +294,14 @@ export const CreateOrEditWifiPasswordContent = ({
           testID="comments-multi-slot-input-slot-0"
         />
 
+        <AttachmentFields
+          attachments={values.attachments}
+          isEditing={isEditing}
+          onAdd={handleFileUpload}
+          onReplace={handleAttachmentReplace}
+          onDelete={handleAttachmentDelete}
+        />
+
         <MultiSlotInput
           actions={
             <Button
@@ -254,8 +320,9 @@ export const CreateOrEditWifiPasswordContent = ({
           }
           testID="hidden-messages-multi-slot-input"
         >
-          {(values.customFields as Array<{ type: string; note: string }>).length
-            ? (values.customFields as Array<{ type: string; note: string }>).map(
+          {(values.customFields as Array<{ type: string; note: string }>)
+            .length ? (
+            (values.customFields as Array<{ type: string; note: string }>).map(
               (field, index) => (
                 <PasswordField
                   key={index}
@@ -268,14 +335,20 @@ export const CreateOrEditWifiPasswordContent = ({
                   isGrouped
                   testID={`hidden-messages-multi-slot-input-slot-${index}`}
                   rightSlot={
-                    (values.customFields as Array<{ type: string; note: string }>)
-                      .length > 1 ? (
+                    (
+                      values.customFields as Array<{
+                        type: string
+                        note: string
+                      }>
+                    ).length > 1 ? (
                       <Button
                         size="small"
                         variant="tertiary"
                         aria-label="Delete hidden message"
                         iconBefore={
-                          <TrashOutlined color={theme.colors.colorTextPrimary} />
+                          <TrashOutlined
+                            color={theme.colors.colorTextPrimary}
+                          />
                         }
                         onClick={() => removeCustomField(index)}
                       />
@@ -284,16 +357,16 @@ export const CreateOrEditWifiPasswordContent = ({
                 />
               )
             )
-            : (
-              <PasswordField
-                label={t`Hidden Message`}
-                value=""
-                placeholder={t`Enter Hidden Message`}
-                onChangeText={handleFirstHiddenMessageChange}
-                isGrouped
-                testID="hidden-messages-multi-slot-input-slot-0"
-              />
-            )}
+          ) : (
+            <PasswordField
+              label={t`Hidden Message`}
+              value=""
+              placeholder={t`Enter Hidden Message`}
+              onChangeText={handleFirstHiddenMessageChange}
+              isGrouped
+              testID="hidden-messages-multi-slot-input-slot-0"
+            />
+          )}
         </MultiSlotInput>
       </View>
     </Layout>
